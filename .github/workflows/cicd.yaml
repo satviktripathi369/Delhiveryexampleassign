@@ -3,26 +3,24 @@ name: WordPress CI/CD Pipeline
 on:
   pull_request:
     branches:
-      - main  # Run CI on pull requests to the main branch
+      - main
   push:
     branches:
-      - main  # Trigger CD when code is pushed to the main branch
+      - main
 
 jobs:
   validate-k8s-manifests:
     name: Validate Kubernetes Manifests (CI)
     runs-on: ubuntu-latest
     steps:
-      # Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Validate Kubernetes manifests using kubeval
       - name: Install kubeval
         run: |
           curl -sSL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar -xz -C /usr/local/bin
 
-      - name: Validate Manifests
+      - name: Validate Kubernetes Manifests
         run: |
           kubeval --strict *.yml
 
@@ -30,32 +28,34 @@ jobs:
     name: Deploy to Kubernetes (CD)
     needs: validate-k8s-manifests
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'  # Only deploy from the main branch
+    if: github.ref == 'refs/heads/main'
     steps:
-      # Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Setup Kubernetes CLI
+      # Setup kubectl
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'v1.28.0'
 
+      # Configure kubeconfig file
       - name: Configure kubeconfig
         env:
-          KUBECONFIG_FILE: ${{ secrets.KUBECONFIG }}
+          KUBECONFIG_FILE: ${{ secrets.KUBECONFIG }}  # Assuming the kubeconfig is stored in GitHub Secrets
         run: |
-          echo "${KUBECONFIG_FILE}" > kubeconfig
-          export KUBECONFIG=$(pwd)/kubeconfig
-          # Print the kubeconfig file to the GitHub Actions logs
-          kubectl config view --minify --output=jsonpath='{.current-context}'
-          kubectl cluster-info
+          # Write the KUBECONFIG content into the default .kube/config file
+          mkdir -p $HOME/.kube
+          echo "${KUBECONFIG_FILE}" > $HOME/.kube/config
 
-      # Deploy manifests
+          # Verify the content
+          echo "Kubeconfig content:"
+          cat $HOME/.kube/config
+
+      # Apply Kubernetes manifests
       - name: Apply Kubernetes Manifests
         run: |
-          kubectl apply -f .
+          kubectl apply -f . -v=8
 
       # Verify deployment
       - name: Verify Deployment
