@@ -1,0 +1,63 @@
+name: WordPress CI/CD Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main  # Run CI on pull requests to the main branch
+  push:
+    branches:
+      - main  # Trigger CD when code is pushed to the main branch
+
+jobs:
+  validate-k8s-manifests:
+    name: Validate Kubernetes Manifests (CI)
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Validate Kubernetes manifests using kubeval
+      - name: Install kubeval
+        run: |
+          curl -sSL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar -xz -C /usr/local/bin
+
+      - name: Validate Manifests
+        run: |
+          kubeval --strict *.yml
+
+  deploy-to-kubernetes:
+    name: Deploy to Kubernetes (CD)
+    needs: validate-k8s-manifests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only deploy from the main branch
+    steps:
+      # Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Setup Kubernetes CLI
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      # Configure kubeconfig from secret
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_FILE: ${{ secrets.KUBECONFIG }}
+        run: |
+          echo "${KUBECONFIG_FILE}" > kubeconfig
+          export KUBECONFIG=$(pwd)/kubeconfig
+
+      # Deploy manifests
+      - name: Apply Kubernetes Manifests
+        run: |
+          kubectl apply -f .
+
+      # Verify deployment
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment/wordpress
+          kubectl get svc wordpress -o wide
+
