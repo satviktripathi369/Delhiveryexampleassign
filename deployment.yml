@@ -30,7 +30,7 @@ spec:
           value: "wordpress"
         volumeMounts:
         - name: wordpress-homepage
-          mountPath: /var/www/html/wp-content/themes/twentytwentythreemanav/front-page.php
+          mountPath: /var/www/html/wp-content/themes/twentytwentythreesatviktest/front-page.php
           subPath: front-page.php
       volumes:
       - name: wordpress-homepage
