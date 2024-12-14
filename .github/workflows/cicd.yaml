@@ -42,13 +42,15 @@ jobs:
         with:
           version: 'v1.28.0'
 
-      # Configure kubeconfig from secret
       - name: Configure kubeconfig
         env:
           KUBECONFIG_FILE: ${{ secrets.KUBECONFIG }}
         run: |
           echo "${KUBECONFIG_FILE}" > kubeconfig
           export KUBECONFIG=$(pwd)/kubeconfig
+          # Print the kubeconfig file to the GitHub Actions logs
+          echo "Kubeconfig content:"
+          cat kubeconfig
 
       # Deploy manifests
       - name: Apply Kubernetes Manifests
