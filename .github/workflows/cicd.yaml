@@ -49,8 +49,8 @@ jobs:
           echo "${KUBECONFIG_FILE}" > kubeconfig
           export KUBECONFIG=$(pwd)/kubeconfig
           # Print the kubeconfig file to the GitHub Actions logs
-          echo "Kubeconfig content:"
-          cat kubeconfig
+          kubectl config view --minify --output=jsonpath='{.current-context}'
+          kubectl cluster-info
 
       # Deploy manifests
       - name: Apply Kubernetes Manifests
